@@ -1,0 +1,13 @@
+[package]
+name = "rcat"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.31", features = ["derive", "env"] }
+simple_logger = { version = "5.0.0", features = ["stderr"] }
+log = { version = "0.4.26", features = [] }
+syntect = "5.2.0"
+colored = "3.0.0"
+anyhow = "1.0.96"
+thiserror = "1.0.69"
