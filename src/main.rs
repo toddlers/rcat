@@ -18,8 +18,9 @@ use thiserror::Error;
 #[command(version)]
 pub struct Args {
     /// directory name
-    #[arg(long, env, default_value = ".")]
-    dname: String,
+    #[arg(value_name = "PATH", default_value = ".")]
+    path: String,
+
     /// Disable syntax highlight
     #[arg(long)]
     no_color: bool,
@@ -29,7 +30,7 @@ pub struct Args {
     ext: Option<String>,
 
     // Maximum recursion depth
-    #[arg(long)]
+    #[arg(long, short)]
     depth: Option<usize>,
 
     /// List files without parsing contents
@@ -69,6 +70,7 @@ fn get_to_exclude() -> HashSet<String> {
         ".git".to_string(),
         "Cargo.lock".to_string(),
         ".gitignore".to_string(),
+        ".github".to_string(),
     ])
 }
 
@@ -216,10 +218,10 @@ fn main() -> Result<()> {
         .with_level(log_level)
         .with_colors(true)
         .init()?;
-    let dir_path = &args.dname.clone();
-    let dir_path = Path::new(&dir_path);
+    let path = args.path.clone();
+    let path = Path::new(&path);
 
     let processor = FileProcessor::new(args);
-    processor.run(dir_path)?;
+    processor.run(path)?;
     Ok(())
 }

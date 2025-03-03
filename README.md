@@ -22,11 +22,11 @@ cargo build --release
 Run the program with the desired directory:
 
 ```sh
-cargo run -- --dname <directory> [options]
+cargo run -- <path> [options]
 ```
 
 ### Options:
-- `--dname <directory>`: Directory to process.
+- `<path>` (**optional**, default: `.`): The file or directory to process.
 - `--depth <n>`: Depth level for recursive search.
 - `--ext <extension>`: Filter files by extension.
 - `--no-color`: Disable colored output.
@@ -34,7 +34,7 @@ cargo run -- --dname <directory> [options]
 
 ## Example
 ```sh
-cargo run -- --dname ./src --ext rs --list
+cargo run -- ./src --ext rs --list
 ```
 Lists all `.rs` files in the `src` directory.
 
@@ -45,4 +45,3 @@ Lists all `.rs` files in the `src` directory.
 - `colored`: Colorful terminal output.
 - `log` and `simple_logger`: Logging.
 - `syntect`: Syntax highlighting.
-
