@@ -9,14 +9,6 @@ A Rust-based file processor that recursively processes directories, applies synt
 - Configurable options like depth, file extensions, and exclusion lists.
 - Colored output for better visibility.
 
-## Installation
-Ensure you have Rust installed. Then, clone the repository and build the project:
-
-```sh
-git clone <repository-url>
-cd file-processor
-cargo build --release
-```
 
 ## Usage
 Run the program with the desired directory:
