@@ -1,9 +1,10 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::*;
-use log::{LevelFilter, debug, info};
+use log::{LevelFilter, debug};
+use serde_json::json;
 use simple_logger::SimpleLogger;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -40,6 +41,10 @@ pub struct Args {
     /// log level
     #[arg(long,short,action=clap::ArgAction::Count)]
     verbose: u8,
+
+    /// output directory tree in json format
+    #[arg(long, short)]
+    json: bool,
 }
 
 #[derive(Debug, Error)]
@@ -59,6 +64,7 @@ struct FileProcessor {
     depth: Option<usize>,
     file_ext: Option<String>,
     list: bool,
+    json: bool,
     excluded_files: HashSet<String>,
 }
 
@@ -74,6 +80,8 @@ fn get_to_exclude() -> HashSet<String> {
     ])
 }
 
+type JsonMap = HashMap<String, serde_json::Value>;
+
 impl FileProcessor {
     fn new(args: Args) -> Self {
         FileProcessor {
@@ -81,23 +89,31 @@ impl FileProcessor {
             depth: args.depth,
             file_ext: args.ext,
             list: args.list,
+            json: args.json,
             excluded_files: get_to_exclude(),
         }
     }
-    fn should_include(&self, file_name: &str) -> bool {
-        self.excluded_files.contains(file_name)
+    fn should_skip(&self, path: &Path) -> bool {
+        path.file_name()
+            .and_then(|f| f.to_str())
+            .map(|name| self.excluded_files.contains(name))
+            .unwrap_or(false)
     }
-    fn print_file_path(&self, path: &Path) {
+    fn print_separator(&self) {
+        println!("\n{}\n", "━".repeat(50).cyan())
+    }
+    fn print_file_info(&self, path: &Path) {
+        self.print_separator();
         println!(
-            "\n{}\n{}  {}\n{}\n",
-            "━".repeat(50).cyan(),
+            "{}  {}\n",
             "▶ OPENING FILE:".bold().yellow(),
             path.display().to_string().bold().green(),
-            "━".repeat(50).cyan()
         );
+
+        self.print_separator()
     }
     fn print_file_contents(&self, path: &Path, no_color: bool) -> Result<()> {
-        self.print_file_path(path);
+        self.print_file_info(path);
         let file =
             fs::File::open(path).context(format!("Could not open file: {}", path.display()))?;
         let content = io::BufReader::new(file);
@@ -131,6 +147,32 @@ impl FileProcessor {
         println!("\n{}\n", "[ END OF FILE ]".bold().red());
         Ok(())
     }
+    fn generate_json(&self, path: &Path) -> serde_json::Value {
+        let mut structure: JsonMap = HashMap::new();
+        let mut files = vec![];
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                let name = entry.file_name().into_string().unwrap_or_default();
+
+                if self.should_skip(path) {
+                    debug!("skipping : {}", name);
+                    continue;
+                }
+
+                if entry_path.is_dir() {
+                    structure.insert(name, self.generate_json(&entry_path));
+                } else {
+                    files.push(name);
+                }
+            }
+        }
+        let mut result = json!({"files": files});
+        for (key, value) in structure {
+            result[key] = value;
+        }
+        serde_json::Value::Object(result.as_object().unwrap().clone())
+    }
     fn proces_file(&self, path: &Path) -> Result<()> {
         if self.list {
             println!(
@@ -152,11 +194,8 @@ impl FileProcessor {
             let entry = entry?;
             let path = entry.path();
             // Extract just the last directory name
-            if let Some(file_name) = path.file_name().and_then(|f| f.to_str()) {
-                if self.should_include(file_name) {
-                    info!("Skipping: {}\n", file_name);
-                    continue;
-                }
+            if self.should_skip(&path) {
+                continue;
             }
             if path.is_file() {
                 debug!("file found {}", path.display());
@@ -167,15 +206,7 @@ impl FileProcessor {
                     .as_ref()
                     .is_none_or(|ext| file_extension == ext)
                 {
-                    if self.list {
-                        println!(
-                            "\n{} {}\n",
-                            "📄 File:".bold().blue(),
-                            path.display().to_string().bold().green()
-                        );
-                    } else if let Err(e) = self.print_file_contents(&path, self.no_color) {
-                        eprintln!("Error reading file {}: {}", path.display(), e);
-                    }
+                    self.proces_file(&path)?;
                 }
             }
 
@@ -200,7 +231,11 @@ impl FileProcessor {
                 FileProcessorError::PathNotFound(path.to_str().unwrap().to_string()).into(),
             );
         }
-        if path.is_dir() {
+        if self.json {
+            let json_structure = self.generate_json(path);
+            println!("{}", serde_json::to_string_pretty(&json_structure)?);
+            Ok(())
+        } else if path.is_dir() {
             self.process_directory(path, self.depth)
         } else {
             self.proces_file(path)

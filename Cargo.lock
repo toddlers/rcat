@@ -381,6 +381,8 @@ dependencies = [
  "clap",
  "colored 3.0.0",
  "log",
+ "serde",
+ "serde_json",
  "simple_logger",
  "syntect",
  "thiserror",

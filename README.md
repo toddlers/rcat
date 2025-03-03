@@ -31,6 +31,7 @@ cargo run -- <path> [options]
 - `--ext <extension>`: Filter files by extension.
 - `--no-color`: Disable colored output.
 - `--list`: List files instead of printing content.
+- `--json`: Prints the listings in json format
 
 ## Example
 ```sh
